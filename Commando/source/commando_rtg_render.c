@@ -3,6 +3,7 @@
 
 extern const unsigned char commando_rom_g1[], commando_rom_g2[], commando_rom_g3[], commando_rom_proms[];
 extern unsigned char ccommando_peek(MY_LITTLE_Z80 *z, unsigned a);
+extern unsigned char ccommando_spritebuf_peek(unsigned o);
 extern int ccommando_scrollx(void);
 extern int ccommando_scrolly(void);
 extern int ccommando_control(void);
@@ -126,30 +127,22 @@ static void draw_sprite(int code, int col, int fx, int fy, int sx, int sy){
 }
 
 static void draw_sprites(MY_LITTLE_Z80 *z){
+    (void)z;
     int flip = ccommando_control() & 0x80;
-    for(unsigned a=0xff7c; a>=0xfe00; a-=4){
-        int b0 = ccommando_peek(z, a + 0);
-        int b1 = ccommando_peek(z, a + 1);
-        int b2 = ccommando_peek(z, a + 2);
-        int b3 = ccommando_peek(z, a + 3);
-        if(!(b0 | b1 | b2 | b3)) {
-            if(a == 0xfe00) break;
-            continue;
-        }
+    for(int o=0x17c; o>=0; o-=4){
+        int b0 = ccommando_spritebuf_peek((unsigned)o + 0);
+        int b1 = ccommando_spritebuf_peek((unsigned)o + 1);
+        int b2 = ccommando_spritebuf_peek((unsigned)o + 2);
+        int b3 = ccommando_spritebuf_peek((unsigned)o + 3);
+        if(!(b0 | b1 | b2 | b3)) continue;
         int code = b0 | ((b1 & 0xc0) << 2);
-        if(code >= 768) {
-            if(a == 0xfe00) break;
-            continue;
-        }
+        if(code >= 768) continue;
         int col = (b1 >> 4) & 3;
         int fx = b1 & 0x04;
         int fy = b1 & 0x08;
         int sx = b3 - ((b1 & 0x01) << 8);
         int sy = b2;
-        if(sy < 16 || sy > 239) {
-            if(a == 0xfe00) break;
-            continue;
-        }
+        if(sy < 16 || sy > 239) continue;
         if(flip){
             sx = 240 - sx;
             sy = 240 - sy;
@@ -157,7 +150,6 @@ static void draw_sprites(MY_LITTLE_Z80 *z){
             fy = !fy;
         }
         draw_sprite(code, col, fx, fy, sx, sy);
-        if(a == 0xfe00) break;
     }
 }
 
