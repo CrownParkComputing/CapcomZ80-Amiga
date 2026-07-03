@@ -30,9 +30,16 @@ extern void          (*gunsmoke_latch_hook)(unsigned char v);
 
 /* ---- soundlatch FIFO (main posts a cmd then 0xff idle within a frame) ---- */
 int gunsmoke_audio_dbg_latch = 0, gunsmoke_audio_dbg_ymw = 0;   /* host-verify counters */
+static unsigned char cur_latch = 0xff, last_queued_latch = 0xff;
 static unsigned char latq[64]; static int latr=0, latw=0;
-static void latch_push(unsigned char v){ if(v==0xff) return; gunsmoke_audio_dbg_latch++; int n=(latw+1)&63; if(n!=latr){ latq[latw]=v; latw=n; } }
-static unsigned char latch_pop(void){ if(latr==latw) return 0xff; unsigned char v=latq[latr]; latr=(latr+1)&63; return v; }
+static void latch_push(unsigned char v){
+    if (v == 0xff && last_queued_latch == 0xff) return;
+    if (v != 0xff) gunsmoke_audio_dbg_latch++;
+    int n=(latw+1)&63;
+    if(n!=latr){ latq[latw]=v; latw=n; last_queued_latch=v; }
+}
+static int latch_pop(unsigned char *out){ if(latr==latw) return 0; *out=latq[latr]; latr=(latr+1)&63; return 1; }
+static unsigned char latch_read(void){ unsigned char v; if(latch_pop(&v)) cur_latch=v; return cur_latch; }
 
 /* ---------------- AY-3-8910 SSG core (one per YM2203) ---------------- */
 typedef struct {
@@ -90,7 +97,6 @@ void   BurnYM2203UpdateRequest(void){ }
 
 /* ---------------- audio Z80 ---------------- */
 static MY_LITTLE_Z80 aud;
-static unsigned char cur_latch = 0xff;
 static int ym_inited = 0;
 static int aud_irq_left = AUD_IRQ_PERIOD;
 static unsigned aud_cycle_acc = 0;
@@ -117,7 +123,7 @@ unsigned gunsmoke_audio_pc(void){ return aud.state.pc & 0xffff; }
 
 static unsigned char aud_rd(MY_LITTLE_Z80 *z, unsigned a){
     a &= 0xffff;
-    if (a == 0xc800) return cur_latch;        /* soundlatch */
+    if (a == 0xc800) return latch_read();     /* soundlatch */
     return z->memory[a];                       /* ROM 0-7fff / RAM c000-c7ff */
 }
 static void aud_wr(MY_LITTLE_Z80 *z, unsigned a, unsigned char v){
@@ -136,12 +142,10 @@ static void aud_wr(MY_LITTLE_Z80 *z, unsigned a, unsigned char v){
 #ifdef GUNSMOKE_AUDIO_NATIVE
 /* C hooks the Rust prelude's rd()/wr() traps call. The prelude reads/writes work RAM
  * (0xc000-0xc7ff) and ROM straight through s.mem (== aud.memory); only the soundlatch
- * READ (0xc800) and the four YM2203 writes (0xe000-0xe003) forward here. Unlike 1943,
- * Gun.Smoke pops the latch FIFO ONCE per IRQ chunk (in gunsmoke_audio_frame) and serves
- * 0xc800 from cur_latch, so this hook returns cur_latch WITHOUT popping. */
+ * READ (0xc800) and the four YM2203 writes (0xe000-0xe003) forward here. */
 unsigned char aud_gunsmoke_aud_latch(void)
 {
-    return cur_latch;
+    return latch_read();
 }
 
 void aud_gunsmoke_aud_ym(unsigned long a, unsigned char v)
@@ -196,7 +200,7 @@ void gunsmoke_audio_init(const unsigned char *snd){
 #ifndef GUNSMOKE_AUDIO_NATIVE
     Z80Reset(&aud.state);
 #endif
-    latr = latw = 0; cur_latch = 0xff; ym_irq = 0;
+    latr = latw = 0; cur_latch = 0xff; last_queued_latch = 0xff; ym_irq = 0;
     aud_irq_left = AUD_IRQ_PERIOD;
     aud_cycle_acc = 0;
     gunsmoke_audio_z       = &aud;
@@ -230,9 +234,6 @@ static void render(signed char *out, int n){
 static void run_audio_cycles(int cycles)
 {
     while (cycles > 0) {
-        if (aud_irq_left == AUD_IRQ_PERIOD)
-            cur_latch = latch_pop();
-
         int n = cycles < aud_irq_left ? cycles : aud_irq_left;
         if (n > 0) {
 #ifdef GUNSMOKE_AUDIO_NATIVE

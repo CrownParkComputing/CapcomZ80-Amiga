@@ -71,7 +71,7 @@ static void aud_setup(volatile uint16_t *c)
     c[R_AUD1LCH] = (uint16_t)(a >> 16); c[R_AUD1LCH+1] = (uint16_t)a;
     c[R_AUD0LEN] = C_RING / 2; c[R_AUD1LEN] = C_RING / 2;
     c[R_AUD0PER] = C_PER;      c[R_AUD1PER] = C_PER;
-    c[R_AUD0VOL] = 56;         c[R_AUD1VOL] = 56;
+    c[R_AUD0VOL] = 48;         c[R_AUD1VOL] = 48;
 }
 
 static void ring_render(unsigned long n)

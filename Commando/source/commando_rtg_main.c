@@ -156,8 +156,13 @@ static const ai_config cmd_intro_cfg = {
 #endif
 
 #define RK_1 0x01
+#define RK_2 0x02
 #define RK_5 0x05
+#define RK_6 0x06
 #define RK_SPACE 0x40
+#define RK_BACKSPACE 0x41
+#define RK_NUMENTER 0x43
+#define RK_RETURN 0x44
 #define RK_ESC 0x45
 #define RK_F10 0x59
 #define RK_P 0x19
@@ -269,19 +274,21 @@ static void poll_input(void){
     int fire2 = !(POTINP & CD32_DATRY);
     int shoot = fire1 || (cd32 & (CD32_RED|CD32_BLUE)) || keydown[RK_SPACE] || keydown[RK_LCTRL];
     int grenade = fire2 || (cd32 & (CD32_YELLOW|CD32_GREEN)) || keydown[RK_LALT] || keydown[RK_RALT];
-    int playing = ccommando_peek(&z, 0xeda0) != 0;
-
     uint8_t sys=0xff, p1=0xff;
-    static int ck, sk, ch, sh;
-    int coin = keydown[RK_5] || (cd32 & (CD32_LSHOULDER|CD32_RSHOULDER));
-    int start = keydown[RK_1] || (cd32 & CD32_PLAY);
-    if(!playing){
-        if(coin && !ck) ch=10;
-        if(start && !sk) sh=40;
-    }
-    ck=coin; sk=start;
-    if(ch){ sys&=~0x80; ch--; }
-    if(sh){ sys&=~0x01; sh--; }
+    static int ck, sk, c2k, s2k, ch, sh, c2h, s2h;
+    int coin = keydown[RK_5] || keydown[RK_BACKSPACE] || (cd32 & CD32_LSHOULDER);
+    int coin2 = keydown[RK_6] || (cd32 & CD32_RSHOULDER);
+    int start = keydown[RK_1] || keydown[RK_RETURN] || keydown[RK_NUMENTER] || (cd32 & CD32_PLAY);
+    int start2 = keydown[RK_2];
+    if(coin && !ck) ch=10;
+    if(start && !sk) sh=40;
+    if(coin2 && !c2k) c2h=10;
+    if(start2 && !s2k) s2h=40;
+    ck=coin; sk=start; c2k=coin2; s2k=start2;
+    if(ch){ sys&=~0x40; ch--; }    /* COIN1 */
+    if(sh){ sys&=~0x01; sh--; }    /* START1 */
+    if(c2h){ sys&=~0x80; c2h--; }  /* COIN2 */
+    if(s2h){ sys&=~0x02; s2h--; }  /* START2 */
     if(right)p1&=~0x01; if(left)p1&=~0x02; if(down)p1&=~0x04; if(up)p1&=~0x08;
     if(shoot)p1&=~0x10; if(grenade)p1&=~0x20;
     if(ccommando_peek(&z, 0xe000) == 0) ccommando_set_inputs(0xff, 0xff, 0xff);
