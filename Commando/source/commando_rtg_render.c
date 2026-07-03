@@ -24,21 +24,21 @@ static const int SXO[16] = { 0,1,2,3,8,9,10,11,256,257,258,259,264,265,266,267 }
 
 static int cpix(int code, int x, int y){
     unsigned o = (unsigned)code * 128 + (unsigned)y * 16 + CXO[x];
-    return (gb(commando_rom_g1, o + 4) << 1) | gb(commando_rom_g1, o);
+    return gb(commando_rom_g1, o + 4) | (gb(commando_rom_g1, o) << 1);
 }
 
 static int bgpix(int code, int x, int y){
     unsigned xo = (x < 8) ? (unsigned)x : 128u + (unsigned)(x - 8);
     unsigned o = (unsigned)code * 256 + (unsigned)y * 8 + xo;
-    return (gb(commando_rom_g2, o) << 2) | (gb(commando_rom_g2, o + 0x40000) << 1) |
-           gb(commando_rom_g2, o + 0x80000);
+    return gb(commando_rom_g2, o) | (gb(commando_rom_g2, o + 0x40000) << 1) |
+           (gb(commando_rom_g2, o + 0x80000) << 2);
 }
 
 static int sppix(int code, int x, int y){
     const unsigned H = 0x60000;
     unsigned o = (unsigned)code * 512 + (unsigned)y * 16 + SXO[x];
-    return (gb(commando_rom_g3, o + H + 4) << 3) | (gb(commando_rom_g3, o + H) << 2) |
-           (gb(commando_rom_g3, o + 4) << 1) | gb(commando_rom_g3, o);
+    return gb(commando_rom_g3, o + H + 4) | (gb(commando_rom_g3, o + H) << 1) |
+           (gb(commando_rom_g3, o + 4) << 2) | (gb(commando_rom_g3, o) << 3);
 }
 
 static int w4(int v){

@@ -75,7 +75,7 @@ int main(void)
 
     for (int f = 0; f < 900; f++) {
         unsigned char sys = 0xff;
-        if (f >= 20 && f < 30) sys &= (unsigned char)~0x80;  /* coin */
+        if (f >= 20 && f < 30) sys &= (unsigned char)~0x40;  /* coin */
         if (f >= 50 && f < 90) sys &= (unsigned char)~0x01;  /* start */
         ccommando_set_inputs(sys, 0xff, 0xff);
         ccommando_run_frame(&z);
