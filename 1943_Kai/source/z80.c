@@ -175,6 +175,17 @@ extern void z80_trace_pc(int pc);
 #ifndef Z80_FAST_WRITE
 #define Z80_FAST_WRITE(a) ((a) >= 0x8000 && (a) < 0xa000)
 #endif
+#ifdef C1943_KAI
+#define Z80_READ_BYTE(address, x)                                       \
+{                                                                       \
+        unsigned int _a = (address) & 0xffff;                           \
+        (x) = (_a == 0xc007u)                                           \
+            ? state->registers.byte[Z80_B]                              \
+            : (Z80_FAST_READ(_a)                                        \
+                ? ((MY_LITTLE_Z80 *)context)->memory[_a]                \
+                : machine_rd((MY_LITTLE_Z80 *)context, _a));            \
+}
+#else
 #define Z80_READ_BYTE(address, x)                                       \
 {                                                                       \
         unsigned int _a = (address) & 0xffff;                           \
@@ -182,6 +193,7 @@ extern void z80_trace_pc(int pc);
             ? ((MY_LITTLE_Z80 *)context)->memory[_a]                    \
             : machine_rd((MY_LITTLE_Z80 *)context, _a);                 \
 }
+#endif
 
 #define Z80_FETCH_BYTE(address, x)                                      \
 {                                                                       \
@@ -199,6 +211,20 @@ extern void z80_trace_pc(int pc);
             ? _z->opcodes[_oa] : _z->memory[_oa];                       \
 }
 
+#ifdef C1943_KAI
+#define Z80_READ_WORD(address, x)                                       \
+{                                                                       \
+        unsigned int _a = (address) & 0xffff, _lo, _hi;                 \
+        _lo = (_a == 0xc007u) ? state->registers.byte[Z80_B]            \
+             : (Z80_FAST_READ(_a) ? ((MY_LITTLE_Z80 *)context)->memory[_a]\
+                               : machine_rd((MY_LITTLE_Z80 *)context, _a)); \
+        _a = (_a + 1) & 0xffff;                                         \
+        _hi = (_a == 0xc007u) ? state->registers.byte[Z80_B]            \
+             : (Z80_FAST_READ(_a) ? ((MY_LITTLE_Z80 *)context)->memory[_a]\
+                               : machine_rd((MY_LITTLE_Z80 *)context, _a)); \
+        (x) = _lo | (_hi << 8);                                         \
+}
+#else
 #define Z80_READ_WORD(address, x)                                       \
 {                                                                       \
         unsigned int _a = (address) & 0xffff, _lo, _hi;                 \
@@ -209,6 +235,7 @@ extern void z80_trace_pc(int pc);
                             : machine_rd((MY_LITTLE_Z80 *)context, _a);  \
         (x) = _lo | (_hi << 8);                                         \
 }
+#endif
 
 #define Z80_FETCH_WORD(address, x)                                      \
 {                                                                       \
