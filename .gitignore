@@ -45,6 +45,9 @@ __pycache__/
 *.fs
 
 # Local arcade ROM staging and generated Amiga executables
+roms/
+packages/zips/*.zip
+Commando/roms/
 Gun_Smoke/roms/
 Commando/Commando
 Commando/source/Commando

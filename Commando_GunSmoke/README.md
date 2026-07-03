@@ -8,6 +8,18 @@ Build everything:
 Commando_GunSmoke/tools/build_all.sh
 ```
 
+ROM zips are not committed. Put `commando.zip` and `gunsmoke.zip` in one of
+these locations before building:
+
+```text
+roms/
+packages/zips/
+Commando/roms/ and Gun_Smoke/roms/
+~/Downloads/
+```
+
+You can also point at a specific GunSmoke zip with `GUNSMOKE_ZIP=/path/to/gunsmoke.zip`.
+
 Install to AGS/Pimiga `SHARED:`:
 
 ```sh

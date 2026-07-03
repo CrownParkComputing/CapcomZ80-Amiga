@@ -5,7 +5,7 @@ import shutil
 import zipfile
 
 HERE = Path(__file__).resolve().parent
-REPO = HERE.parents[2]
+REPO = HERE.parents[1]
 HOME = Path.home()
 SRC = HOME / "Commando" / "ports" / "commando" / "v1" / "roms"
 OUT = HERE / "build" / "rcommando"
@@ -27,6 +27,10 @@ PACKAGE_ZIPS = (
     HOME / "AmigaArcadePorts" / "packages" / "zips" / "Commando.zip",
 )
 MAME_ZIPS = (
+    REPO / "roms" / "commando.zip",
+    REPO / "packages" / "zips" / "commando.zip",
+    HERE.parent / "roms" / "commando.zip",
+    HERE.parent / "roms" / "Commando.zip",
     HOME / "Downloads" / "commando.zip",
 )
 SHARED_EXE = HOME / "AGS_UAE" / "SHARED" / "Capcom_Z80_Dual_YM2203" / "Commando" / "Commando"
