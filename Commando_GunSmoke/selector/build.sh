@@ -8,7 +8,7 @@ OBJ="$HERE/build"
 
 export PATH="${AMIGA_GCC_PATH:-$HOME/amiga-amigaos/bin}:$HOME/.local/bin:$PATH"
 
-GCC="m68k-amigaos-gcc -m68030 -noixemul -O2 -fomit-frame-pointer -DNDEBUG -I $HERE ${EXTRA_CFLAGS:-}"
+GCC="m68k-amigaos-gcc -m68030 -noixemul -O3 -fomit-frame-pointer -funroll-loops -DNDEBUG -I $HERE ${EXTRA_CFLAGS:-}"
 AS="m68k-amigaos-as -m68020"
 VASM="vasmm68k_mot -I $HERE -m68020 -phxass -nowarn=62 -Fhunk"
 
