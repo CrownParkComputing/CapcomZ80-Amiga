@@ -6,13 +6,18 @@ BASE=$(pwd)
 
 B=obj_interp
 SRCROOT=..
-AI="${AI:-}"  # optional external ArcadeIntro module; unset = skip intro
+AI="${AI:-../../shared_source/ArcadeIntro}"
+NO_INTRO="${NO_EMBEDDED_INTRO:-0}"
+EXTRA_DEFS=""
+if [ "$NO_INTRO" = "1" ]; then
+  EXTRA_DEFS="-DCOMMANDO_NO_EMBEDDED_INTRO"
+fi
 DIST="../dist"
 mkdir -p "$B" "$DIST"
 
 AS="m68k-amigaos-as -m68020"
-GCC="m68k-amigaos-gcc -m68030 -noixemul -O3 -fomit-frame-pointer -funroll-loops -DNDEBUG -I . -I $AI"
-GCC_AUD="m68k-amigaos-gcc -m68030 -noixemul -O1 -fno-strict-aliasing -fomit-frame-pointer -DNDEBUG -I ."
+GCC="m68k-amigaos-gcc -m68030 -noixemul -O3 -fomit-frame-pointer -funroll-loops -DNDEBUG $EXTRA_DEFS -I . -I $AI"
+GCC_AUD="m68k-amigaos-gcc -m68030 -noixemul -O1 -fno-strict-aliasing -fomit-frame-pointer -DNDEBUG $EXTRA_DEFS -I ."
 VASM="vasmm68k_mot -I . -I build/rcommando -m68020 -phxass -nowarn=62 -Fhunk"
 YMDEF="-DHAS_YM2203=1 -DHAS_YM2608=0 -DHAS_YM2610=0 -DHAS_YM2610B=0 -DHAS_YM2612=0 -DHAS_YM3438=0"
 
@@ -52,7 +57,12 @@ $GCC -c ccommando_interp.c -o "$B/ccommando_interp.o"
 $GCC -c commando_rtg_render.c -o "$B/commando_rtg_render.o"
 $GCC -c commando_rtg_main.c -o "$B/commando_rtg_main.o"
 $GCC -c commando_libstubs.c -o "$B/commando_libstubs.o"
-$GCC -c "$AI/arcade_intro.c" -o "$B/arcade_intro.o"
+INTRO_OBJS=()
+if [ "$NO_INTRO" = "1" ]; then
+  echo "== skip embedded ArcadeIntro loader =="
+else
+  $GCC -c "$AI/arcade_intro.c" -o "$B/arcade_intro.o"
+fi
 
 echo "== compile sound =="
 $GCC_AUD -DZ80_MAP_COMMANDO -c z80.c -o "$B/z80.o"
@@ -67,10 +77,15 @@ $VASM -o "$B/hal_sysvars.o" hal_sysvars.s
 $VASM -o "$B/pl_support.o" pl_support.s
 $VASM -o "$B/romdata.o" commando_romdata.s
 $VASM -I build/bezel -o "$B/rtg_bezeldata.o" commando_rtg_bezeldata.s
-$AS "$AI/arcade_intro_glue.s" -o "$B/arcade_intro_glue.o"
-$AS "$AI/tc_ptplayer.68k" -o "$B/tc_ptplayer.o"
-$AS "$AI/tc_ptplayer_glue.s" -o "$B/tc_ptplayer_glue.o"
-$VASM -I "$AI" -o "$B/intro_mod.o" "$AI/intro_mod.s"
+if [ "$NO_INTRO" = "1" ]; then
+  true
+else
+  $AS "$AI/arcade_intro_glue.s" -o "$B/arcade_intro_glue.o"
+  $AS "$AI/tc_ptplayer.68k" -o "$B/tc_ptplayer.o"
+  $AS "$AI/tc_ptplayer_glue.s" -o "$B/tc_ptplayer_glue.o"
+  $VASM -I "$AI" -o "$B/intro_mod.o" "$AI/intro_mod.s"
+  INTRO_OBJS=("$B/arcade_intro.o" "$B/arcade_intro_glue.o" "$B/tc_ptplayer.o" "$B/tc_ptplayer_glue.o" "$B/intro_mod.o")
+fi
 
 echo "== link =="
 FAST_HUNK=4
@@ -83,7 +98,7 @@ vlink -b amigahunk -Bstatic -Cexestack -mrel -sc \
     "$B/commando_rtg_main.o" "$B/commando_rtg_render.o" "$B/ccommando_interp.o" \
     "$B/commando_audio.o" "$B/commando_audio_amiga.o" "$B/fm.o" "$B/z80.o" \
     "$B/commando_libstubs.o" \
-    "$B/arcade_intro.o" "$B/arcade_intro_glue.o" "$B/tc_ptplayer.o" "$B/tc_ptplayer_glue.o" "$B/intro_mod.o" \
+    "${INTRO_OBJS[@]}" \
     "$B/romdata.o" "$B/rtg_bezeldata.o"
 cp -f "Commando" ..
 ls -la "Commando" ../Commando
@@ -120,7 +135,7 @@ if [ -f "$RTG_BASE" ]; then
   xdftool "$HDF" delete Commando >/dev/null 2>&1 || true
   xdftool "$HDF" delete Commando.info >/dev/null 2>&1 || true
   xdftool "$HDF" write "Commando" Commando \
-      + write "../Commando.info" Commando.info \
+      + write "../assets/Commando.info" Commando.info \
       + write "$B/startup-sequence" S/startup-sequence
 else
   printf 'Echo "Commando RTG"\nStack 65536\nSYS:Commando\nC:UAEquit\nEndCLI >NIL:\n' > "$B/startup-sequence"
@@ -129,7 +144,7 @@ else
       + format COMMANDO ffs \
       + boot install \
       + write "Commando" Commando \
-      + write "../Commando.info" Commando.info \
+      + write "../assets/Commando.info" Commando.info \
       + makedir S \
       + write "$B/startup-sequence" S/startup-sequence
 fi

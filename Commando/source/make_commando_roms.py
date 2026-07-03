@@ -5,9 +5,9 @@ import shutil
 import zipfile
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[3]
 REPO = HERE.parents[2]
-SRC = ROOT / "Commando" / "ports" / "commando" / "v1" / "roms"
+HOME = Path.home()
+SRC = HOME / "Commando" / "ports" / "commando" / "v1" / "roms"
 OUT = HERE / "build" / "rcommando"
 NAMES = ("main.bin", "g1.bin", "g2.bin", "g3.bin", "proms.bin", "snd.bin")
 SHA1 = {
@@ -22,8 +22,14 @@ SHA1 = {
 # Fallback for the centralised board package: the old external conversion tree
 # may have been removed, but the original package zip/shared executable still
 # contains the exact ROM blobs as one contiguous hunk data segment.
-PACKAGE_ZIP = REPO / "packages" / "zips" / "Commando.zip"
-SHARED_EXE = ROOT / "AGS_UAE" / "SHARED" / "Capcom_Z80_Dual_YM2203" / "Commando" / "Commando"
+PACKAGE_ZIPS = (
+    REPO / "packages" / "zips" / "Commando.zip",
+    HOME / "AmigaArcadePorts" / "packages" / "zips" / "Commando.zip",
+)
+MAME_ZIPS = (
+    HOME / "Downloads" / "commando.zip",
+)
+SHARED_EXE = HOME / "AGS_UAE" / "SHARED" / "Capcom_Z80_Dual_YM2203" / "Commando" / "Commando"
 EMBEDDED = {
     "main.bin": (0x14c6e4 + 0x000004, 0x0c000),
     "g1.bin": (0x14c6e4 + 0x00c004, 0x04000),
@@ -50,6 +56,23 @@ def extract_from_exe(data):
     if not staged_ok():
         raise ValueError("recovered Commando blobs failed hash validation")
 
+def extract_from_mame_zip(zf):
+    blobs = {
+        "main.bin": zf.read("cm04.9m") + zf.read("cm03.8m"),
+        "g1.bin": zf.read("vt01.5d"),
+        "g2.bin": b"".join(zf.read(n) for n in (
+            "vt11.5a", "vt12.6a", "vt13.7a", "vt14.8a", "vt15.9a", "vt16.10a")),
+        "g3.bin": b"".join(zf.read(n) for n in (
+            "vt05.7e", "vt06.8e", "vt07.9e", "vt08.7h", "vt09.8h", "vt10.9h")),
+        "proms.bin": b"".join(zf.read(n) for n in (
+            "vtb1.1d", "vtb2.2d", "vtb3.3d", "vtb4.1h", "vtb6.6e")),
+        "snd.bin": zf.read("cm02.9f") + bytes(0x10000 - len(zf.read("cm02.9f"))),
+    }
+    for n, data in blobs.items():
+        (OUT / n).write_bytes(data)
+    if not staged_ok():
+        raise ValueError("raw Commando zip blobs failed hash validation")
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     if staged_ok():
@@ -65,11 +88,18 @@ def main():
         return
 
     try:
-        if PACKAGE_ZIP.exists():
-            with zipfile.ZipFile(PACKAGE_ZIP) as zf:
-                extract_from_exe(zf.read("Commando/Commando"))
-            print(f"recovered Commando ROM blobs from {PACKAGE_ZIP} -> {OUT}")
-            return
+        for mame_zip in MAME_ZIPS:
+            if mame_zip.exists():
+                with zipfile.ZipFile(mame_zip) as zf:
+                    extract_from_mame_zip(zf)
+                print(f"staged Commando ROM blobs from {mame_zip} -> {OUT}")
+                return
+        for package_zip in PACKAGE_ZIPS:
+            if package_zip.exists():
+                with zipfile.ZipFile(package_zip) as zf:
+                    extract_from_exe(zf.read("Commando/Commando"))
+                print(f"recovered Commando ROM blobs from {package_zip} -> {OUT}")
+                return
         if SHARED_EXE.exists():
             extract_from_exe(SHARED_EXE.read_bytes())
             print(f"recovered Commando ROM blobs from {SHARED_EXE} -> {OUT}")

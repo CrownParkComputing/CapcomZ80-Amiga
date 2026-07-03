@@ -16,7 +16,19 @@
 #include <stdint.h>
 #include <string.h>
 #include "z80emu.h"
+#ifndef GUNSMOKE_NO_EMBEDDED_INTRO
 #include "arcade_intro.h"
+#else
+#define AI_CD32_PLAY      0x02
+#define AI_CD32_LSHOULDER 0x04
+#define AI_CD32_RSHOULDER 0x08
+#define AI_CD32_GREEN     0x10
+#define AI_CD32_YELLOW    0x20
+#define AI_CD32_RED       0x40
+#define AI_CD32_BLUE      0x80
+static unsigned ai_read_cd32_port1(void) { return 0; }
+static int ai_cd32_exit_combo(unsigned cd32) { (void)cd32; return 0; }
+#endif
 
 extern struct IntuitionBase *IntuitionBase;
 extern struct GfxBase *GfxBase;
@@ -162,12 +174,11 @@ static void upload_palette(void)
 
 static void draw_bezel(void)
 {
-    static const unsigned char grad[] = { 1, 2, 3, 4, 5, 6, 7 };
     if (!rtg_frame) return;
     if ((size_t)(gunsmoke_rtg_bezel_end - gunsmoke_rtg_bezel) >= (size_t)RTG_W * RTG_H)
-        ai_bezel_blit(rtg_frame, gunsmoke_rtg_bezel, RTG_W, RTG_H);
+        memcpy(rtg_frame, gunsmoke_rtg_bezel, (size_t)RTG_W * RTG_H);
     else
-        ai_bezel_draw_simple(rtg_frame, RTG_W, RTG_H, play_w, play_h, grad, 7, 15);
+        memset(rtg_frame, 0, (size_t)RTG_W * RTG_H);
 }
 
 static void present_full(void)
@@ -192,6 +203,7 @@ static void present_game(const uint8_t *src)
                       rtg_frame + (size_t)gy0 * RTG_W + gx0, RTG_W);
 }
 
+#ifndef GUNSMOKE_NO_EMBEDDED_INTRO
 static void apply_dips(void *ctx)
 {
     (void)ctx;
@@ -253,6 +265,7 @@ static const ai_config intro_cfg = {
     intro_ready, intro_warmup, 0,
     &dip_cfg, intro_status, intro_failed_cb
 };
+#endif
 
 static void poll_window_keys(void)
 {
@@ -275,6 +288,7 @@ static void poll_input(void)
     poll_window_keys();
 
     unsigned cd32 = ai_read_cd32_port1();
+#ifndef GUNSMOKE_NO_EMBEDDED_INTRO
     int dip_now = ai_cd32_dip_combo(cd32);
     if ((keydown[RK_F10] && !prev_f10) || (dip_now && !prev_dip)) {
         if (audio_opened) { gunsmoke_audio_amiga_close(); audio_opened = 0; }
@@ -288,6 +302,7 @@ static void poll_input(void)
     }
     prev_f10 = keydown[RK_F10];
     prev_dip = dip_now;
+#endif
 
     if (keydown[RK_P] && !prev_p) g_pause = !g_pause;
     prev_p = keydown[RK_P];
@@ -407,9 +422,11 @@ void hal_game_init(void)
     ScreenToFront(scr);
     ActivateWindow(win);
 
+#ifndef GUNSMOKE_NO_EMBEDDED_INTRO
     ai_init(scr, win, rtg_frame, RTG_W, RTG_H);
     ai_set_loader_enabled(1);
     if (!ai_run(&intro_cfg)) { hal_quit = 1; return; }
+#endif
     memset(keydown, 0, sizeof keydown);
 
     upload_palette();

@@ -16,7 +16,9 @@
 #include <stdint.h>
 #include <string.h>
 #include "z80emu.h"
+#ifndef COMMANDO_NO_EMBEDDED_INTRO
 #include "arcade_intro.h"
+#endif
 #include "commando_rtg_bezel.h"
 #include "commando_rtg_render.h"
 
@@ -39,17 +41,6 @@ extern void commando_audio_shutdown(void);
 extern void commando_audio_amiga_open(void);
 extern void commando_audio_amiga_frame(void);
 
-static int whitty_no_game_loader(void)
-{
-    char v[8];
-    LONG n;
-    if (!DOSBase)
-        DOSBase = (struct DosLibrary *)OpenLibrary((CONST_STRPTR)"dos.library", 36);
-    if (!DOSBase)
-        return 0;
-    n = GetVar("WHITTY_NO_GAME_LOADER", v, sizeof(v), 0);
-    return n > 0 && v[0] != '0';
-}
 extern void commando_audio_amiga_close(void);
 
 static struct Screen *scr;
@@ -95,6 +86,7 @@ static void frame_pace(void){
     do{ ReadEClock(&ev); now=ev.ev_lo; }while((LONG)(now-next_tick) < 0);
 }
 
+#ifndef COMMANDO_NO_EMBEDDED_INTRO
 static int cmd_booted;
 static void cmd_intro_warmup(void *c){
     (void)c;
@@ -161,6 +153,7 @@ static const ai_config cmd_intro_cfg = {
     cmd_intro_ready, cmd_intro_warmup, 0,
     &cmd_dip_cfg
 };
+#endif
 
 #define RK_1 0x01
 #define RK_5 0x05
@@ -252,6 +245,7 @@ static void poll_input(void){
     static int potinit=0;
     if(!potinit){ POTGO=0xff00; potinit=1; }
     unsigned cd32 = read_cd32();
+#ifndef COMMANDO_NO_EMBEDDED_INTRO
     {
         static int kf10, pdip;
         int dip_now = ai_cd32_dip_combo(cd32);
@@ -266,6 +260,7 @@ static void poll_input(void){
         kf10 = keydown[RK_F10];
         pdip = dip_now;
     }
+#endif
     unsigned v=JOY1DAT;
     int right=(v>>1)&1,left=(v>>9)&1,down=((v>>1)^v)&1,up=((v>>9)^(v>>8))&1;
     if(keydown[RK_RIGHT])right=1; if(keydown[RK_LEFT])left=1;
@@ -363,11 +358,12 @@ void hal_game_init(void){
     if(win){ ScreenToFront(scr); ActivateWindow(win); }
     if(!win){ shutdown(); hal_quit=1; return; }
     SetRast(win->RPort, 0);
+#ifndef COMMANDO_NO_EMBEDDED_INTRO
     ai_init(scr, win, rtg_frame, (int)disp_w, (int)disp_h);
-    if (!whitty_no_game_loader())
-        ai_set_loader_enabled(1);
+    ai_set_loader_enabled(1);
     if(!ai_run(&cmd_intro_cfg)) hal_quit=1;
     if(hal_quit){ shutdown(); return; }
+#endif
     upload_rgb332_palette();
     blit_bezel();
     commando_audio_init(commando_rom_snd);

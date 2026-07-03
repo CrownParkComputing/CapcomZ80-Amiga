@@ -43,3 +43,10 @@ __pycache__/
 # Amiberry / emulator state
 *.sav
 *.fs
+
+# Local arcade ROM staging and generated Amiga executables
+Gun_Smoke/roms/
+Commando/Commando
+Commando/source/Commando
+Gun_Smoke/Gun.Smoke
+Commando_GunSmoke/selector/WhittySelector

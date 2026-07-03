@@ -41,14 +41,20 @@ python3 "$SRC/tools/make_gunsmoke.py"
 python3 "$SRC/tools/make_gunsmoke_rtg_bezel.py"
 
 echo "== compile C =="
-AI="${AI:-}"  # optional external ArcadeIntro module; unset = skip intro
+AI="${AI:-$ROOT/../shared_source/ArcadeIntro}"
+NO_INTRO="${NO_EMBEDDED_INTRO:-0}"
+EXTRA_DEFS=""
+if [ "$NO_INTRO" = "1" ]; then
+  EXTRA_DEFS="-DGUNSMOKE_NO_EMBEDDED_INTRO"
+fi
 YMDEF="-DHAS_YM2203=1 -DHAS_YM2608=0 -DHAS_YM2610=0 -DHAS_YM2610B=0 -DHAS_YM2612=0 -DHAS_YM3438=0"
-GCC="m68k-amigaos-gcc -m68030 -noixemul -O3 -fomit-frame-pointer -funroll-loops -DNDEBUG -DZ80_MAP_GUNSMOKE -I $SRC/cores -I $SRC/hal -I $AI"
-GCC_AUD="m68k-amigaos-gcc -m68030 -noixemul -O1 -fno-strict-aliasing -fomit-frame-pointer -DNDEBUG -DZ80_MAP_GUNSMOKE -I $SRC/cores -I $SRC/hal -I $AI"
+GCC="m68k-amigaos-gcc -m68030 -noixemul -O3 -fomit-frame-pointer -funroll-loops -DNDEBUG $EXTRA_DEFS -DZ80_MAP_GUNSMOKE -I $SRC/cores -I $SRC/hal -I $AI"
+GCC_AUD="m68k-amigaos-gcc -m68030 -noixemul -O1 -fno-strict-aliasing -fomit-frame-pointer -DNDEBUG $EXTRA_DEFS -DZ80_MAP_GUNSMOKE -I $SRC/cores -I $SRC/hal -I $AI"
 
 LIBGCC="$ROOT/../Black_Tiger/source/obj_interp/libgcc_extract"
 if [ ! -f "$LIBGCC/_udivdi3.o" ]; then LIBGCC="$ROOT/../Commando/source/obj_interp/libgcc_extract"; fi
 if [ ! -f "$LIBGCC/_udivdi3.o" ]; then LIBGCC="$ROOT/../1943/source/obj/libgcc_extract"; fi
+if [ ! -f "$LIBGCC/_udivdi3.o" ]; then LIBGCC="$HOME/amiga-gcc-build/build-Linux-m68k-amigaos/gcc/m68k-amigaos/libm020/libgcc"; fi
 cp "$LIBGCC/_udivdi3.o" "$B/libgcc_extract/_udivdi3.o"
 cp "$LIBGCC/_umoddi3.o" "$B/libgcc_extract/_umoddi3.o"
 
@@ -56,7 +62,12 @@ $GCC -c "$SRC/cores/z80.c"                          -o "$B/z80.o"
 $GCC -c "$SRC/hal/cgunsmoke.c"                      -o "$B/cgunsmoke.o"
 $GCC -c "$SRC/hal/cgunsmoke_rtg.c"                  -o "$B/cgunsmoke_rtg.o"
 $GCC -c "$SRC/hal/cgunsmoke_rtg_presenter.c"        -o "$B/cgunsmoke_rtg_presenter.o"
-$GCC -c "$AI/arcade_intro.c"                        -o "$B/arcade_intro.o"
+INTRO_OBJS=()
+if [ "$NO_INTRO" = "1" ]; then
+  echo "== skip embedded ArcadeIntro loader =="
+else
+  $GCC -c "$AI/arcade_intro.c"                      -o "$B/arcade_intro.o"
+fi
 $GCC_AUD $YMDEF -I "$SRC/cores/ym" -c "$SRC/cores/ym/fm.c" -o "$B/fm.o"
 $GCC_AUD $YMDEF -I "$SRC/cores/ym" -c "$SRC/hal/cgunsmoke_audio.c" -o "$B/cgunsmoke_audio.o"
 $GCC_AUD -c "$SRC/hal/cgunsmoke_audio_amiga.c"      -o "$B/cgunsmoke_audio_amiga.o"
@@ -72,10 +83,15 @@ $VASM -o "$B/rtg_bezeldata.o" "$SRC/hal/cgunsmoke_rtg_bezeldata.s"
 
 echo "== assemble ArcadeIntro ptplayer + glue =="
 AS="m68k-amigaos-as -m68020"
-$AS "$AI/arcade_intro_glue.s" -o "$B/arcade_intro_glue.o"
-$AS "$AI/tc_ptplayer.68k"     -o "$B/tc_ptplayer.o"
-$AS "$AI/tc_ptplayer_glue.s"  -o "$B/tc_ptplayer_glue.o"
-$VASM -I "$AI" -o "$B/intro_mod.o" "$AI/intro_mod.s"
+if [ "$NO_INTRO" = "1" ]; then
+  true
+else
+  $AS "$AI/arcade_intro_glue.s" -o "$B/arcade_intro_glue.o"
+  $AS "$AI/tc_ptplayer.68k"     -o "$B/tc_ptplayer.o"
+  $AS "$AI/tc_ptplayer_glue.s"  -o "$B/tc_ptplayer_glue.o"
+  $VASM -I "$AI" -o "$B/intro_mod.o" "$AI/intro_mod.s"
+  INTRO_OBJS=("$B/arcade_intro.o" "$B/arcade_intro_glue.o" "$B/tc_ptplayer.o" "$B/tc_ptplayer_glue.o" "$B/intro_mod.o")
+fi
 
 echo "== link =="
 FAST_HUNK=4
@@ -87,7 +103,7 @@ vlink -b amigahunk -Bstatic -Cexestack -mrel -sc \
     "$B/slave.o" "$B/amiga.o" "$B/hal_sysvars.o" "$B/pl_support.o" \
     "$B/cgunsmoke_rtg_presenter.o" "$B/cgunsmoke_rtg.o" "$B/cgunsmoke.o" "$B/z80.o" \
     "$B/cgunsmoke_audio.o" "$B/cgunsmoke_audio_amiga.o" "$B/fm.o" \
-    "$B/arcade_intro.o" "$B/arcade_intro_glue.o" "$B/tc_ptplayer.o" "$B/tc_ptplayer_glue.o" "$B/intro_mod.o" \
+    "${INTRO_OBJS[@]}" \
     "$B/romdata.o" "$B/rtg_bezeldata.o" \
     "$B/libgcc_extract/_udivdi3.o" "$B/libgcc_extract/_umoddi3.o"
 ls -la "$EXE"
