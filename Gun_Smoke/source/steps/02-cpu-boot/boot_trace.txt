@@ -1,0 +1,33 @@
+Gun.Smoke main-Z80 host boot trace (build/gunsmoke_host)
+Generated Tue 23 Jun 07:38:16 BST 2026
+
+Gun.Smoke @ 60 frames: PC=0x00c9 maxPC=0x0157 bank=0 ctrl=80 layer=10
+  scrollx=0 scrolly=0  chon=1 bgon=1 objon=0 spr3bank=0
+  videoram d000-d3ff: 896/1024   colorram d400-d7ff: 159/1024
+  spriteram f000-ffff: 0/4096   workRAM e000-efff: 149/4096
+
+Gun.Smoke @ 120 frames: PC=0x00c9 maxPC=0x0157 bank=0 ctrl=80 layer=10
+  scrollx=0 scrolly=0  chon=1 bgon=1 objon=0 spr3bank=0
+  videoram d000-d3ff: 896/1024   colorram d400-d7ff: 261/1024
+  spriteram f000-ffff: 0/4096   workRAM e000-efff: 149/4096
+
+Gun.Smoke @ 300 frames: PC=0x00c2 maxPC=0x0157 bank=0 ctrl=80 layer=10
+  scrollx=0 scrolly=0  chon=1 bgon=1 objon=0 spr3bank=0
+  videoram d000-d3ff: 896/1024   colorram d400-d7ff: 546/1024
+  spriteram f000-ffff: 0/4096   workRAM e000-efff: 147/4096
+
+Gun.Smoke @ 600 frames: PC=0x00c2 maxPC=0x0157 bank=0 ctrl=80 layer=30
+  scrollx=6656 scrolly=0  chon=1 bgon=1 objon=1 spr3bank=0
+  videoram d000-d3ff: 870/1024   colorram d400-d7ff: 244/1024
+  spriteram f000-ffff: 0/4096   workRAM e000-efff: 149/4096
+
+Gun.Smoke @ 900 frames: PC=0x00c7 maxPC=0x0157 bank=0 ctrl=80 layer=30
+  scrollx=6175 scrolly=0  chon=1 bgon=1 objon=1 spr3bank=0
+  videoram d000-d3ff: 891/1024   colorram d400-d7ff: 221/1024
+  spriteram f000-ffff: 37/4096   workRAM e000-efff: 192/4096
+
+Gun.Smoke @ 1500 frames: PC=0x00c1 maxPC=0x0157 bank=0 ctrl=80 layer=30
+  scrollx=6323 scrolly=0  chon=1 bgon=1 objon=1 spr3bank=0
+  videoram d000-d3ff: 891/1024   colorram d400-d7ff: 221/1024
+  spriteram f000-ffff: 199/4096   workRAM e000-efff: 198/4096
+

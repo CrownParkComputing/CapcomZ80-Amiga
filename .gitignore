@@ -1,0 +1,45 @@
+# Build artifacts
+build/
+obj/
+obj_rtg/
+obj_native/
+obj_interp/
+dist/
+prebuilt/
+
+# Object files and libraries
+*.o
+*.a
+*.so
+
+# ROM images and binary blobs
+*.bin
+*.rom
+
+# Hardfile / disk images
+*.hdf
+*.adf
+
+# Debug snapshots
+*.ppm
+
+# Executables
+*.exe
+*.elf
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor / OS files
+*.swp
+*.swo
+*~
+.DS_Store
+.idea/
+.vscode/
+
+# Amiberry / emulator state
+*.sav
+*.fs
