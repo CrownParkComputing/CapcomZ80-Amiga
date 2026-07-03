@@ -142,7 +142,6 @@ static void draw_sprites(MY_LITTLE_Z80 *z){
         int fy = b1 & 0x08;
         int sx = b3 - ((b1 & 0x01) << 8);
         int sy = b2;
-        if(sy < 16 || sy > 239) continue;
         if(flip){
             sx = 240 - sx;
             sy = 240 - sy;
