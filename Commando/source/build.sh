@@ -7,6 +7,8 @@ BASE=$(pwd)
 B=obj_interp
 SRCROOT=..
 AI="${AI:-../../shared_source/ArcadeIntro}"
+CORE="${CORE:-../../shared_source/CapcomZ80Core}"
+YMCORE="$CORE/ym"
 NO_INTRO="${NO_EMBEDDED_INTRO:-0}"
 EXTRA_DEFS=""
 if [ "$NO_INTRO" = "1" ]; then
@@ -16,8 +18,8 @@ DIST="../dist"
 mkdir -p "$B" "$DIST"
 
 AS="m68k-amigaos-as -m68020"
-GCC="m68k-amigaos-gcc -m68030 -noixemul -O3 -fomit-frame-pointer -funroll-loops -DNDEBUG $EXTRA_DEFS -I . -I $AI"
-GCC_AUD="m68k-amigaos-gcc -m68030 -noixemul -O1 -fno-strict-aliasing -fomit-frame-pointer -DNDEBUG $EXTRA_DEFS -I ."
+GCC="m68k-amigaos-gcc -m68030 -noixemul -O3 -fomit-frame-pointer -funroll-loops -DNDEBUG $EXTRA_DEFS -I . -I $CORE -I $YMCORE -I $AI"
+GCC_AUD="m68k-amigaos-gcc -m68030 -noixemul -O1 -fno-strict-aliasing -fomit-frame-pointer -DNDEBUG $EXTRA_DEFS -I . -I $CORE -I $YMCORE"
 VASM="vasmm68k_mot -I . -I build/rcommando -m68020 -phxass -nowarn=62 -Fhunk"
 YMDEF="-DHAS_YM2203=1 -DHAS_YM2608=0 -DHAS_YM2610=0 -DHAS_YM2610B=0 -DHAS_YM2612=0 -DHAS_YM3438=0"
 
@@ -65,9 +67,9 @@ else
 fi
 
 echo "== compile sound =="
-$GCC_AUD -DZ80_MAP_COMMANDO -c z80.c -o "$B/z80.o"
-$GCC_AUD $YMDEF -I ym -c ym/fm.c -o "$B/fm.o"
-$GCC_AUD $YMDEF -I ym -c commando_audio.c -o "$B/commando_audio.o"
+$GCC_AUD -DZ80_MAP_COMMANDO -c "$CORE/z80.c" -o "$B/z80.o"
+$GCC_AUD $YMDEF -c "$YMCORE/fm.c" -o "$B/fm.o"
+$GCC_AUD $YMDEF -c commando_audio.c -o "$B/commando_audio.o"
 $GCC_AUD -c commando_audio_amiga.c -o "$B/commando_audio_amiga.o"
 
 echo "== assemble entry + data + intro =="

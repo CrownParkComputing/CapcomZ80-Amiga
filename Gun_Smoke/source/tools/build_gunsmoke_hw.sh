@@ -10,6 +10,8 @@ export PATH="${AMIGA_GCC_PATH:-$HOME/.local/bin}:$PATH"
 HERE="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$HERE"
 B=build/gunsmokehw_obj
+CORE="${CORE:-../shared_source/CapcomZ80Core}"
+YMCORE="$CORE/ym"
 mkdir -p "$B"
 
 echo "== stage ROM/gfx/PROM blobs =="
@@ -22,11 +24,11 @@ mkdir -p build/gunsmoke_loader
 cp assets/gunsmoke_loader.mod build/gunsmoke_loader/gunsmoke_loader.mod
 
 echo "== compile C =="
-GCC="m68k-amigaos-gcc -m68030 -noixemul -O2 -fomit-frame-pointer -DNDEBUG -DHWS_SPR_W=64 -I src/cores -I src/hal"
+GCC="m68k-amigaos-gcc -m68030 -noixemul -O2 -fomit-frame-pointer -DNDEBUG -DHWS_SPR_W=64 -I $CORE -I $YMCORE -I src/hal"
 YMDEF="-DHAS_YM2203=1 -DHAS_YM2608=0 -DHAS_YM2610=0 -DHAS_YM2610B=0 -DHAS_YM2612=0 -DHAS_YM3438=0"
 # z80.c built with -DZ80_MAP_GUNSMOKE so the audio CPU's YM regs at 0xe000-0xe003 trap
 # to machine_wr (writing them to RAM would silently kill all sound).
-$GCC -DZ80_MAP_GUNSMOKE -c src/cores/z80.c      -o "$B/z80.o"
+$GCC -DZ80_MAP_GUNSMOKE -c "$CORE/z80.c"        -o "$B/z80.o"
 $GCC -c src/hal/cgunsmoke.c                      -o "$B/cgunsmoke.o"
 $GCC -c src/hal/cgunsmoke_hwrender.c             -o "$B/cgunsmoke_hwrender.o"
 $GCC -c src/hal/hwscroll.c                       -o "$B/hwscroll.o"
@@ -35,8 +37,8 @@ $GCC -c src/hal/cgunsmoke_firedir.c              -o "$B/cgunsmoke_firedir.o"
 $GCC -c src/hal/cgunsmoke_hwmain.c               -o "$B/cgunsmoke_hwmain.o"
 # LOADER: C64-style title reveal + sanxion .mod (LOADER_MUSIC=1 plays the mod via ptplayer).
 $GCC -DLOADER_MUSIC -c src/hal/cgunsmoke_loader.c -o "$B/cgunsmoke_loader.o"
-$GCC $YMDEF -I src/cores/ym -c src/cores/ym/fm.c -o "$B/fm.o"
-$GCC $YMDEF -I src/cores/ym -c src/hal/cgunsmoke_audio.c -o "$B/cgunsmoke_audio.o"
+$GCC $YMDEF -c "$YMCORE/fm.c"                   -o "$B/fm.o"
+$GCC $YMDEF -c src/hal/cgunsmoke_audio.c        -o "$B/cgunsmoke_audio.o"
 $GCC -c src/hal/cgunsmoke_audio_amiga.c          -o "$B/cgunsmoke_audio_amiga.o"
 
 echo "== assemble glue + embedded data =="
