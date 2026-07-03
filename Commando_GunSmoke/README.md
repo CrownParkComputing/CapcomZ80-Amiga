@@ -35,5 +35,6 @@ Commando_GunSmoke/tools/package_bundle.sh
 The game binaries are built with `NO_EMBEDDED_INTRO=1`, so the combined selector is the only loader.
 
 Commando and GunSmoke both build against the shared Z80/YM2203 interpreter core
-in `shared_source/CapcomZ80Core`. Their machine maps and RTG renderers stay
-game-specific because the video hardware layouts are different.
+in `shared_source/CapcomZ80Core` and the shared vertical RTG video helpers in
+`shared_source/CapcomZ80Video`. Their machine-map tile/sprite rules stay
+game-specific, but the common 224x256 rotated output, palette, and scaling path is shared.

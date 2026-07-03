@@ -7,6 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/source"
 CORE="${CORE:-$ROOT/../shared_source/CapcomZ80Core}"
 YMCORE="$CORE/ym"
+VIDEO="${VIDEO:-$ROOT/../shared_source/CapcomZ80Video}"
 B="$ROOT/build/gunsmoke_interp_obj"
 EXE="$ROOT/build/gunsmoke_interp"
 HDF="$ROOT/dist/GunSmoke_RTG.hdf"
@@ -50,7 +51,7 @@ if [ "$NO_INTRO" = "1" ]; then
   EXTRA_DEFS="-DGUNSMOKE_NO_EMBEDDED_INTRO"
 fi
 YMDEF="-DHAS_YM2203=1 -DHAS_YM2608=0 -DHAS_YM2610=0 -DHAS_YM2610B=0 -DHAS_YM2612=0 -DHAS_YM3438=0"
-GCC="m68k-amigaos-gcc -m68030 -noixemul -O3 -fomit-frame-pointer -funroll-loops -DNDEBUG $EXTRA_DEFS -DZ80_MAP_GUNSMOKE -I $CORE -I $YMCORE -I $SRC/hal -I $AI"
+GCC="m68k-amigaos-gcc -m68030 -noixemul -O3 -fomit-frame-pointer -funroll-loops -DNDEBUG $EXTRA_DEFS -DZ80_MAP_GUNSMOKE -I $CORE -I $YMCORE -I $VIDEO -I $SRC/hal -I $AI"
 GCC_AUD="m68k-amigaos-gcc -m68030 -noixemul -O1 -fno-strict-aliasing -fomit-frame-pointer -DNDEBUG $EXTRA_DEFS -DZ80_MAP_GUNSMOKE -I $CORE -I $YMCORE -I $SRC/hal -I $AI"
 
 LIBGCC="$ROOT/../Black_Tiger/source/obj_interp/libgcc_extract"
@@ -61,6 +62,7 @@ cp "$LIBGCC/_udivdi3.o" "$B/libgcc_extract/_udivdi3.o"
 cp "$LIBGCC/_umoddi3.o" "$B/libgcc_extract/_umoddi3.o"
 
 $GCC -c "$CORE/z80.c"                               -o "$B/z80.o"
+$GCC -c "$VIDEO/capcom_z80_video.c"                 -o "$B/capcom_z80_video.o"
 $GCC -c "$SRC/hal/cgunsmoke.c"                      -o "$B/cgunsmoke.o"
 $GCC -c "$SRC/hal/cgunsmoke_rtg.c"                  -o "$B/cgunsmoke_rtg.o"
 $GCC -c "$SRC/hal/cgunsmoke_rtg_presenter.c"        -o "$B/cgunsmoke_rtg_presenter.o"
@@ -103,7 +105,7 @@ vlink -b amigahunk -Bstatic -Cexestack -mrel -sc \
     -hunkattr bss=$FAST_HUNK -hunkattr .bss=$FAST_HUNK \
     -o "$EXE" \
     "$B/slave.o" "$B/amiga.o" "$B/hal_sysvars.o" "$B/pl_support.o" \
-    "$B/cgunsmoke_rtg_presenter.o" "$B/cgunsmoke_rtg.o" "$B/cgunsmoke.o" "$B/z80.o" \
+    "$B/cgunsmoke_rtg_presenter.o" "$B/cgunsmoke_rtg.o" "$B/capcom_z80_video.o" "$B/cgunsmoke.o" "$B/z80.o" \
     "$B/cgunsmoke_audio.o" "$B/cgunsmoke_audio_amiga.o" "$B/fm.o" \
     "${INTRO_OBJS[@]}" \
     "$B/romdata.o" "$B/rtg_bezeldata.o" \

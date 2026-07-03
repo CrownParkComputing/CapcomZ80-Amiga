@@ -5,6 +5,7 @@
  * to 224x256, then scales it into a full-size window on the RTG Workbench
  * public screen.
  */
+#include "capcom_z80_video.h"
 #include "z80emu.h"
 #include <exec/exec.h>
 #include <exec/memory.h>
@@ -30,12 +31,12 @@ extern int gunsmoke_scrollx(void), gunsmoke_scrolly(void);
 extern int gunsmoke_chon(void), gunsmoke_bgon(void), gunsmoke_objon(void), gunsmoke_sprite3bank(void);
 extern void gunsmoke_set_inputs(unsigned char sys, unsigned char p1, unsigned char p2);
 
-#define GAME_W      224
-#define GAME_H      256
+#define GAME_W      CAPCOM_Z80_GAME_W
+#define GAME_H      CAPCOM_Z80_GAME_H
 
-#define SW 256
-#define SH 224
-#define YOFF 16
+#define SW CAPCOM_Z80_SRC_W
+#define SH CAPCOM_Z80_SRC_H
+#define YOFF CAPCOM_Z80_ROT_YOFF
 #define NCHAR 1024
 #define NTILE 512
 #define NSPR 2048
@@ -77,7 +78,7 @@ static int pubscreen_locked;
 
 static inline int gbit(const unsigned char *p, unsigned o)
 {
-    return (p[o >> 3] >> (7 - (o & 7))) & 1;
+    return capcom_z80_bit(p, o);
 }
 
 static int char_pix(int code, int x, int y)
@@ -130,14 +131,6 @@ static void decode_gfx(void)
     gfx_decoded = 1;
 }
 
-static inline void put_abs(int absx, int absy, uint8_t pen)
-{
-    int x = absy - YOFF;
-    int y = 255 - absx;
-    if ((unsigned)x < GAME_W && (unsigned)y < GAME_H)
-        game_frame[y * GAME_W + x] = pen;
-}
-
 static void composite(MY_LITTLE_Z80 *z)
 {
     const unsigned char *proms = gunsmoke_rom_proms;
@@ -149,7 +142,7 @@ static void composite(MY_LITTLE_Z80 *z)
     int s3 = gunsmoke_sprite3bank();
 
     if (!gfx_decoded) decode_gfx();
-    memset(game_frame, 0, GAME_W * GAME_H);
+    capcom_z80_clear_frame(game_frame, 0);
 
     /* BG tilemap -- per-TILE, not per-pixel (mirrors c1943_render.c): the tile
      * attr/code lookup and the code*1024 / fy*32 / color*16 MULUs are hoisted to each
@@ -176,7 +169,7 @@ static void composite(MY_LITTLE_Z80 *z)
             const unsigned char *cb  = proms + 0x400 + color * 16;
             const unsigned char *cb2 = proms + 0x500 + color * 16;
             int fxflip = attr & 0x40;
-            unsigned char *d = game_frame + (size_t)(255 - gx) * GAME_W + xcol;
+            unsigned char *d = capcom_z80_rotated_ptr(game_frame, gx, absy);
             for (; sub < 32 && gx < SW; sub++, gx++, d -= GAME_W) {
                 int fx = fxflip ? 31 - sub : sub;
                 int pix = trow[fx];
@@ -202,7 +195,7 @@ static void composite(MY_LITTLE_Z80 *z)
             if (!pix) continue;
             int ind = 0x80 | (proms[0x600 + color * 16 + pix] & 0xf) |
                       ((proms[0x700 + color * 16 + pix] & 7) << 4);
-            put_abs(sx0 + px, sy0 + py, (uint8_t)ind);
+            capcom_z80_put_rotated(game_frame, sx0 + px, sy0 + py, (uint8_t)ind);
         }
     }
 
@@ -223,7 +216,7 @@ static void composite(MY_LITTLE_Z80 *z)
             int color = attr & 0x1f;
             const unsigned char *crow = dec_char + (size_t)(code & (NCHAR - 1)) * 64 + iy * 8;
             const unsigned char *cb = proms + 0x300 + color * 4;
-            unsigned char *d = game_frame + (size_t)(255 - gx) * GAME_W + xcol;
+            unsigned char *d = capcom_z80_rotated_ptr(game_frame, gx, absy);
             for (; sub < 8 && gx < SW; sub++, gx++, d -= GAME_W) {
                 int pix = crow[sub];
                 int lut = cb[pix] & 0xf;
@@ -237,10 +230,12 @@ static void upload_palette(void)
 {
     const unsigned char *p = gunsmoke_rom_proms;
     loadrgb[0] = (256UL << 16) | 0;
+    uint8_t rgb[256 * 3];
+    capcom_z80_palette_rgb888_linear4(p, rgb);
     for (int i=0; i<256; i++) {
-        uint8_t r = (uint8_t)((p[0x000 + i] & 0xf) * 17);
-        uint8_t g = (uint8_t)((p[0x100 + i] & 0xf) * 17);
-        uint8_t b = (uint8_t)((p[0x200 + i] & 0xf) * 17);
+        uint8_t r = rgb[i*3 + 0];
+        uint8_t g = rgb[i*3 + 1];
+        uint8_t b = rgb[i*3 + 2];
         loadrgb[1 + i*3 + 0] = ((uint32_t)r) * 0x01010101UL;
         loadrgb[1 + i*3 + 1] = ((uint32_t)g) * 0x01010101UL;
         loadrgb[1 + i*3 + 2] = ((uint32_t)b) * 0x01010101UL;
@@ -273,12 +268,7 @@ void gunsmoke_rtg_backend_shutdown(void)
 
 void gunsmoke_rtg_backend_palette(uint8_t *rgb)
 {
-    const unsigned char *p = gunsmoke_rom_proms;
-    for (int i = 0; i < 256; i++) {
-        rgb[i*3 + 0] = (uint8_t)((p[0x000 + i] & 0xf) * 17);
-        rgb[i*3 + 1] = (uint8_t)((p[0x100 + i] & 0xf) * 17);
-        rgb[i*3 + 2] = (uint8_t)((p[0x200 + i] & 0xf) * 17);
-    }
+    capcom_z80_palette_rgb888_linear4(gunsmoke_rom_proms, rgb);
 }
 
 const uint8_t *gunsmoke_rtg_backend_frame(MY_LITTLE_Z80 *z)

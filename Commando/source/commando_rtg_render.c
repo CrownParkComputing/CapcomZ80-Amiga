@@ -7,70 +7,45 @@ extern int ccommando_scrollx(void);
 extern int ccommando_scrolly(void);
 extern int ccommando_control(void);
 
-#define VIS_X0 16
-
-static unsigned char frame[CMD_NH][CMD_NW];
+static unsigned char frame[CAPCOM_Z80_FRAME_SIZE];
 static unsigned char char_px[1024][64];
 static unsigned char bg_px[1024][256];
 static unsigned char spr_px[768][256];
-static unsigned char char_opaque[1024];
 static unsigned char pen8[256];
 static int ready;
 
-static int gb(const unsigned char *p, unsigned bit){ return (p[bit >> 3] >> (7 - (bit & 7))) & 1; }
 static const int CXO[8] = { 0,1,2,3,8,9,10,11 };
 static const int SXO[16] = { 0,1,2,3,8,9,10,11,256,257,258,259,264,265,266,267 };
 
 static int cpix(int code, int x, int y){
     unsigned o = (unsigned)code * 128 + (unsigned)y * 16 + CXO[x];
-    return (gb(commando_rom_g1, o + 4) << 1) | gb(commando_rom_g1, o);
+    return (capcom_z80_bit(commando_rom_g1, o + 4) << 1) | capcom_z80_bit(commando_rom_g1, o);
 }
 
 static int bgpix(int code, int x, int y){
     unsigned xo = (x < 8) ? (unsigned)x : 128u + (unsigned)(x - 8);
     unsigned o = (unsigned)code * 256 + (unsigned)y * 8 + xo;
-    return (gb(commando_rom_g2, o) << 2) | (gb(commando_rom_g2, o + 0x40000) << 1) |
-           gb(commando_rom_g2, o + 0x80000);
+    return (capcom_z80_bit(commando_rom_g2, o) << 2) |
+           (capcom_z80_bit(commando_rom_g2, o + 0x40000) << 1) |
+           capcom_z80_bit(commando_rom_g2, o + 0x80000);
 }
 
 static int sppix(int code, int x, int y){
     const unsigned H = 0x60000;
     unsigned o = (unsigned)code * 512 + (unsigned)y * 16 + SXO[x];
-    return (gb(commando_rom_g3, o + H + 4) << 3) | (gb(commando_rom_g3, o + H) << 2) |
-           (gb(commando_rom_g3, o + 4) << 1) | gb(commando_rom_g3, o);
-}
-
-static int w4(int v){
-    v &= 0xf;
-    return 0x0e * (v & 1) + 0x1f * ((v >> 1) & 1) + 0x43 * ((v >> 2) & 1) + 0x8f * ((v >> 3) & 1);
-}
-
-static uint8_t rgb332(unsigned r, unsigned g, unsigned b){
-    return (uint8_t)(((r >> 5) << 5) | ((g >> 5) << 2) | (b >> 6));
-}
-
-static void put_abs(int absx, int absy, unsigned char pen){
-    int x = absy - VIS_X0;
-    int y = 255 - absx;
-    if((unsigned)x < CMD_NW && (unsigned)y < CMD_NH)
-        frame[y][x] = pen;
+    return (capcom_z80_bit(commando_rom_g3, o + H + 4) << 3) |
+           (capcom_z80_bit(commando_rom_g3, o + H) << 2) |
+           (capcom_z80_bit(commando_rom_g3, o + 4) << 1) |
+           capcom_z80_bit(commando_rom_g3, o);
 }
 
 void commando_rtg_render_init(void){
     if(ready) return;
-    for(int i=0;i<256;i++)
-        pen8[i] = rgb332((unsigned)w4(commando_rom_proms[0x000+i]),
-                         (unsigned)w4(commando_rom_proms[0x100+i]),
-                         (unsigned)w4(commando_rom_proms[0x200+i]));
+    capcom_z80_palette_rgb332_weighted4(commando_rom_proms, pen8);
     for(int cd=0; cd<1024; cd++)
         for(int y=0; y<8; y++)
             for(int x=0; x<8; x++)
                 char_px[cd][y*8+x] = (unsigned char)cpix(cd, x, y);
-    for(int cd=0; cd<1024; cd++){
-        int op = 0;
-        for(int i=0; i<64; i++) if(char_px[cd][i] != 3){ op = 1; break; }
-        char_opaque[cd] = (unsigned char)op;
-    }
     for(int cd=0; cd<1024; cd++)
         for(int y=0; y<16; y++)
             for(int x=0; x<16; x++)
@@ -86,7 +61,7 @@ static void draw_bg(MY_LITTLE_Z80 *z){
     int scx = ccommando_scrollx() & 0x1ff, scy = ccommando_scrolly() & 0x1ff;
     int ctcol = scx >> 4, fhx = scx & 15;
     int ctrow = scy >> 4, fvy = scy & 15;
-    memset(frame, 0, sizeof frame);
+    capcom_z80_clear_frame(frame, 0);
     for(int i=0;i<=16;i++) for(int j=0;j<=16;j++){
         int wtrow = (ctrow + i) & 31, wtcol = (ctcol + j) & 31;
         int idx = wtcol * 32 + wtrow;
@@ -104,7 +79,7 @@ static void draw_bg(MY_LITTLE_Z80 *z){
                 int xx = fx ? 15 - x : x;
                 int px = tile[yy*16+xx];
                 unsigned char pen = (unsigned char)(col * 8 + px);
-                put_abs(nh, nv, pen);
+                capcom_z80_put_rotated(frame, nh, nv, pen);
             }
         }
     }
@@ -120,7 +95,7 @@ static void draw_sprite(int code, int col, int fx, int fy, int sx, int sy){
             int xx = sx + x; if((unsigned)xx >= 256) continue;
             int tx = fx ? 15 - x : x;
             int px = tile[ty*16+tx];
-            if(px != 15) put_abs(xx, yy, (unsigned char)(128 + col * 16 + px));
+            if(px != 15) capcom_z80_put_rotated(frame, xx, yy, (unsigned char)(128 + col * 16 + px));
         }
     }
 }
@@ -176,7 +151,7 @@ static void draw_fg(MY_LITTLE_Z80 *z){
                 int xx = ccol * 8 + x;
                 int tx = fx ? 7 - x : x;
                 int px = tile[ty*8+tx];
-                if(px != 3) put_abs(xx, yy, (unsigned char)(192 + col * 4 + px));
+                if(px != 3) capcom_z80_put_rotated(frame, xx, yy, (unsigned char)(192 + col * 4 + px));
             }
         }
     }
@@ -187,12 +162,5 @@ void commando_rtg_render(MY_LITTLE_Z80 *z, uint8_t *dst, int dst_stride, int dst
     draw_bg(z);
     draw_sprites(z);
     draw_fg(z);
-    for(int y=0;y<dst_h;y++){
-        int sy = (y * CMD_NH) / dst_h;
-        uint8_t *d = dst + (size_t)y * dst_stride;
-        for(int x=0;x<dst_w;x++){
-            int sx = (x * CMD_NW) / dst_w;
-            d[x] = pen8[frame[sy][sx]];
-        }
-    }
+    capcom_z80_scale_rgb332(frame, pen8, dst, dst_stride, dst_w, dst_h);
 }
