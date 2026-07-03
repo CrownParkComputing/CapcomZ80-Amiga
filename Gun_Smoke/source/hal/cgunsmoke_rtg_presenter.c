@@ -15,7 +15,6 @@
 #include <proto/timer.h>
 #include <stdint.h>
 #include <string.h>
-#include "capcom_z80_video.h"
 #include "z80emu.h"
 #ifndef GUNSMOKE_NO_EMBEDDED_INTRO
 #include "arcade_intro.h"
@@ -150,6 +149,11 @@ static void frame_pace(void)
     } while ((LONG)(now - next_tick) < 0);
 }
 
+static uint8_t rgb332(unsigned r, unsigned g, unsigned b)
+{
+    return (uint8_t)(((r >> 5) << 5) | ((g >> 5) << 2) | (b >> 6));
+}
+
 static void upload_palette(void)
 {
     gunsmoke_rtg_backend_palette(game_rgb);
@@ -165,7 +169,7 @@ static void upload_palette(void)
     loadrgb[1 + 256*3] = 0;
     LoadRGB32(&scr->ViewPort, loadrgb);
     for (int i = 0; i < 256; i++)           /* game-pal index -> RGB332 pen, once */
-        game_pen[i] = capcom_z80_rgb332(game_rgb[i*3 + 0], game_rgb[i*3 + 1], game_rgb[i*3 + 2]);
+        game_pen[i] = rgb332(game_rgb[i*3 + 0], game_rgb[i*3 + 1], game_rgb[i*3 + 2]);
 }
 
 static void draw_bezel(void)

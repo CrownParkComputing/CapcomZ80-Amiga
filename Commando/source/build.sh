@@ -9,7 +9,6 @@ SRCROOT=..
 AI="${AI:-../../shared_source/ArcadeIntro}"
 CORE="${CORE:-../../shared_source/CapcomZ80Core}"
 YMCORE="$CORE/ym"
-VIDEO="${VIDEO:-../../shared_source/CapcomZ80Video}"
 NO_INTRO="${NO_EMBEDDED_INTRO:-0}"
 EXTRA_DEFS=""
 if [ "$NO_INTRO" = "1" ]; then
@@ -19,7 +18,7 @@ DIST="../dist"
 mkdir -p "$B" "$DIST"
 
 AS="m68k-amigaos-as -m68020"
-GCC="m68k-amigaos-gcc -m68030 -noixemul -O3 -fomit-frame-pointer -funroll-loops -DNDEBUG $EXTRA_DEFS -I . -I $CORE -I $YMCORE -I $VIDEO -I $AI"
+GCC="m68k-amigaos-gcc -m68030 -noixemul -O3 -fomit-frame-pointer -funroll-loops -DNDEBUG $EXTRA_DEFS -I . -I $CORE -I $YMCORE -I $AI"
 GCC_AUD="m68k-amigaos-gcc -m68030 -noixemul -O1 -fno-strict-aliasing -fomit-frame-pointer -DNDEBUG $EXTRA_DEFS -I . -I $CORE -I $YMCORE"
 VASM="vasmm68k_mot -I . -I build/rcommando -m68020 -phxass -nowarn=62 -Fhunk"
 YMDEF="-DHAS_YM2203=1 -DHAS_YM2608=0 -DHAS_YM2610=0 -DHAS_YM2610B=0 -DHAS_YM2612=0 -DHAS_YM3438=0"
@@ -57,7 +56,6 @@ echo "== use interpreted main-Z80 backend =="
 
 echo "== compile presenter + renderer =="
 $GCC -c ccommando_interp.c -o "$B/ccommando_interp.o"
-$GCC -c "$VIDEO/capcom_z80_video.c" -o "$B/capcom_z80_video.o"
 $GCC -c commando_rtg_render.c -o "$B/commando_rtg_render.o"
 $GCC -c commando_rtg_main.c -o "$B/commando_rtg_main.o"
 $GCC -c commando_libstubs.c -o "$B/commando_libstubs.o"
@@ -99,7 +97,7 @@ vlink -b amigahunk -Bstatic -Cexestack -mrel -sc \
     -hunkattr bss=$FAST_HUNK -hunkattr .bss=$FAST_HUNK \
     -o "Commando" \
     "$B/slave.o" "$B/amiga.o" "$B/hal_sysvars.o" "$B/pl_support.o" \
-    "$B/commando_rtg_main.o" "$B/commando_rtg_render.o" "$B/capcom_z80_video.o" "$B/ccommando_interp.o" \
+    "$B/commando_rtg_main.o" "$B/commando_rtg_render.o" "$B/ccommando_interp.o" \
     "$B/commando_audio.o" "$B/commando_audio_amiga.o" "$B/fm.o" "$B/z80.o" \
     "$B/commando_libstubs.o" \
     "${INTRO_OBJS[@]}" \
